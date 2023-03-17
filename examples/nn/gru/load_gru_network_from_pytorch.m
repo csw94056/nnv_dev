@@ -1,0 +1,3 @@
+modelfile = matlab.internal.examples.downloadSupportFile("nnet", ...
+    "/saved/mnist_gruNN_028h_01l.pt");
+net = importNetworkFromPyTorch(modelfile)

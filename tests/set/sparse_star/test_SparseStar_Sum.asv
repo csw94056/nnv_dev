@@ -1,0 +1,82 @@
+close all; clear; clc;
+
+option = [];
+relaxFactor = 0;
+dis_opt = [];
+lp_solver = 'estimate';
+
+dim = 2;
+lb = -rand(dim,1);
+ub = rand(dim,1);
+
+S = Star(lb, ub);
+S.Z = [];
+SS = SparseStar(lb, ub);
+
+W1 = 1 - 2*rand(dim);
+b1 = 1 - 2*rand(dim,1);
+
+S1 = S.affineMap(W1, b1);
+SS1 = SS.affineMap(W1, b1);
+
+
+disp('after AffineMap');
+tS1 = table;
+[tS1.lb, tS1.ub] = S1.estimateBounds()
+tSSa = table;
+[tSSa.lb, tSSa.ub] = SS1.estimateRanges()
+
+
+TS1 = TanSig.reach(S1, 'approx-star', option, relaxFactor, dis_opt, lp_solver);
+TSS1 = TanSig.reach(S1, 'approx-sparse-star', option, relaxFactor, dis_opt, lp_solver);
+
+disp('after TanSig');
+tTS1 = table;
+[tTS1.lb, tTS1.ub] = S1.estimateBounds()
+TSS1 = table;
+[TSS1.lb, TSS1.ub] = SS1.estimateRanges()
+
+
+timeit(@() TanSig.reach(Sa, 'approx-star'))
+timeit(@() TanSig.reach(SSa, 'approx-sparse-star'))
+
+W2 = 1 - 2*rand(dim);
+b2 = 1 - 2*rand(dim,1);
+
+S2 = S1.affineMap(W2,b2);
+SS2 = SS1.affineMap(W2,b2);
+
+
+MS = S2.Sum(S1);
+MSS = SS2.Sum(SS1);
+
+figure('Name', 'test TanSig of SparseStar');
+nexttile;
+plot(S, 'r');
+plot(SS, 'c');
+title('input');
+
+
+nexttile;
+plot(Sa, 'r');
+plot(SSa, 'c');
+title('after affineMap 1');
+
+
+nexttile;
+plot(S1, 'r');
+plot(SS1, 'c');
+title('after TanSig');
+
+nexttile;
+plot(S2, 'r');
+plot(SS2, 'c');
+title('after affineMap 2');
+
+
+nexttile;
+plot(MS, 'r');
+plot(MSS, 'c');
+title('after MinkowskiSum');
+
+whos S SS Sa SSa S1 SS1 S2 SS2 MS MSS

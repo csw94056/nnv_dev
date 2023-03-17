@@ -1,0 +1,1 @@
+L = GRULayer.rand(3, 2);
