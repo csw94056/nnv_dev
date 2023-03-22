@@ -1464,7 +1464,7 @@ classdef TanSig
 
             % add new constraints
             
-            nC = size(I.C, 1);
+%            nC = size(I.C, 1);
             [nA, mA] = size(I.A);
             mZ = I.nVar+1-mA;
             isSparse = (nnz(I.A(:, 2:mA)) + N)  < 0.5 * (mZ*I.dim + nA*(mA-1) + N*m);

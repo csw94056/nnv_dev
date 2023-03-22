@@ -1,4 +1,5 @@
 % close all; clear; clc;
+format long;
 
 option = [];
 relaxFactor = 0;
@@ -95,9 +96,9 @@ tMSS = table;
 % title('after affineMap 2');
 % 
 % 
-% nexttile;
-% plot(MS, 'r');
-% plot(MSS, 'c');
-% title('after MinkowskiSum');
+nexttile;
+plot(MS, 'r');
+plot(MSS, 'c');
+title('after MinkowskiSum');
 
 whos S SS Sa SSa S1 SS1 S2 SS2 MS MSS

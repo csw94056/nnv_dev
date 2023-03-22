@@ -221,7 +221,6 @@ classdef SparseStar
                     obj.d = [];
                     obj.dim = 0;
                     obj.nVar = 0;
-                    obj.nAvar = 0;
 
                 otherwise
                     error('Invalid number of input arguments (should be 0 or 2 or 3 or 5)');
@@ -316,7 +315,8 @@ classdef SparseStar
             if strcmp(lps, 'linprog')
                 options = optimoptions(@linprog, 'Display','none'); 
                 options.OptimalityTolerance = 1e-10; % set tolerance
-                [~, ~, exitflag, ~] = linprog(f, C, d, [], [], obj.pred_lb, obj.pred_ub, options);
+%                 [~, ~, exitflag, ~] = linprog(f, C, d, [], [], obj.pred_lb, obj.pred_ub, options);
+                [~, ~, exitflag, ~] = linprog(full(f), full(C), full(d), [], [], obj.pred_lb, obj.pred_ub, options);
                 if exitflag == 1
                     bool = 0;
                 elseif exitflag == -2 || exitflag == -9 || exitflag == -5 || exitflag == 0
@@ -477,12 +477,17 @@ classdef SparseStar
             new_C = [blkdiag(OC1, XC1), blkdiag(OC2, XC2)];
             new_d = [Od; Xd];
 
-            if mOC == 0 || mOX == 0
-                % either obj has no C or X has no C or both have no C
+            if mOC == 0
+                % either obj has no C or both (obj and X) have no C
                 % remove first row zero
                 nC = size(new_C, 1);
                 new_C = new_C(2:nC, :);
                 new_d = new_d(2:nC, :);
+            elseif mOX == 0
+                % X has no C
+                nC1 = size(OC1, 1)+1;
+                new_C(nC1,:) = [];
+                new_d(nC1) = [];
             end
 
             if ~isempty(obj.pred_lb) && ~isempty(X.pred_lb)
@@ -671,7 +676,8 @@ classdef SparseStar
                 if strcmp(lp_solver, 'linprog')
                     options = optimoptions(@linprog, 'Display','none');
                     options.OptimalityTolerance = 1e-10; % set tolerance
-                    [~, fval, exitflag, ~] = linprog(f, obj.C, obj.d, [], [], obj.pred_lb, obj.pred_ub, options); 
+%                     [~, fval, exitflag, ~] = linprog(f, obj.C, obj.d, [], [], obj.pred_lb, obj.pred_ub, options); 
+                    [~, fval, exitflag, ~] = linprog(full(f), full(obj.C), full(obj.d), [], [], obj.pred_lb, obj.pred_ub, options);
                     if exitflag == 1
                         xmin = fval + obj.A(index, 1);
                     else
@@ -759,7 +765,8 @@ classdef SparseStar
                         xmin(i) = obj.A(map(i), 1);
                     else                                   
                         if strcmp(lp_solver, 'linprog') 
-                            [~, fval, exitflag, ~] = linprog(f(i, :), obj.C, obj.d, [], [], obj.pred_lb, obj.pred_ub, options); 
+%                             [~, fval, exitflag, ~] = linprog(f(i, :), obj.C, obj.d, [], [], obj.pred_lb, obj.pred_ub, options); 
+                            [~, fval, exitflag, ~] = linprog(full(f(i, :)), full(obj.C), full(obj.d), [], [], obj.pred_lb, obj.pred_ub, options);
                             if exitflag == 1
                                 xmin(i) = fval + obj.A(map(i), 1);
                             else
@@ -827,7 +834,8 @@ classdef SparseStar
                 if strcmp(lp_solver, 'linprog')
                     options = optimoptions(@linprog, 'Display','none');
                     options.OptimalityTolerance = 1e-10; % set tolerance
-                    [~, fval, exitflag, ~] = linprog(-f, obj.C, obj.d, [], [], obj.pred_lb, obj.pred_ub, options); 
+%                     [~, fval, exitflag, ~] = linprog(-f, obj.C, obj.d, [], [], obj.pred_lb, obj.pred_ub, options);
+                    [~, fval, exitflag, ~] = linprog(-full(f), full(obj.C), obj.d, [], [], obj.pred_lb, obj.pred_ub, options);
                     if exitflag == 1
                         xmax = -fval + obj.A(index, 1);
                     else
@@ -916,7 +924,8 @@ classdef SparseStar
                     else
                         
                         if strcmp(lp_solver, 'linprog')
-                            [~, fval, exitflag, ~] = linprog(-f(i, :), obj.C, obj.d, [], [], obj.pred_lb, obj.pred_ub, options); 
+%                             [~, fval, exitflag, ~] = linprog(-f(i, :), obj.C, obj.d, [], [], obj.pred_lb, obj.pred_ub, options); 
+                            [~, fval, exitflag, ~] = linprog(-full(f(i, :)), full(obj.C), obj.d, [], [], obj.pred_lb, obj.pred_ub, options); 
                             if exitflag == 1
                                 xmax(i) = -fval + obj.A(map(i), 1);
                             else
@@ -975,10 +984,11 @@ classdef SparseStar
 
             else % star set is a set
                 
-                if ~isempty(obj.state_lb) && ~isempty(obj.state_ub)
-                    B = Box(obj.state_lb, obj.state_ub);
+%                 if ~isempty(obj.state_lb) && ~isempty(obj.state_ub)
+%                     B = Box(obj.state_lb, obj.state_ub);
+                if 0
                 else
-                    [lb, ub] = obj.getRanges('linprog');
+                    [lb, ub] = obj.getRanges('linprog')
 
                     if isempty(lb) || isempty(ub)
                         B = [];

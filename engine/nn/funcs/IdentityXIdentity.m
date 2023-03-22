@@ -992,7 +992,7 @@ classdef IdentityXIdentity
 
             if ~isempty(map2)
                 mZ = I.nVar + 2 -mXA - mHA;
-                isSparse = nnz(I.A(:, 2:mA) + N)  < 0.5 * (mZ*I.dim + nIA*(mIA-1) + N*m);
+                isSparse = nnz(I.A(:, 2:mIA) + N)  < 0.5 * (mZ*I.dim + nIA*(mIA-1) + N*m);
                 if isSparse
                     Z = sparse(length(map2), mZ);
                 else
