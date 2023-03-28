@@ -1639,8 +1639,10 @@ classdef LogSig
 
             new_pred_lb = [I.pred_lb; yl(map2)];
             new_pred_ub = [I.pred_ub; yu(map2)];
+            pd1 = I.pred_depth + 1;
+            new_pred_depth = [pd1; zeros(m, 1)];
 
-            S = SparseStar(new_A, new_C, new_d, new_pred_lb, new_pred_ub);
+            S = SparseStar(new_A, new_C, new_d, new_pred_lb, new_pred_ub, new_pred_depth);
         end
 
     end

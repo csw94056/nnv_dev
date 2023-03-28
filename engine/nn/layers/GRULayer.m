@@ -151,7 +151,7 @@ classdef GRULayer
             % b is number of batch size
             % n is number of input size
             [s, b, n] = size(x);
-            
+
             if n ~= obj.nI
                 error('Inconsistent dimension of the input vector and the network input')
             end
@@ -196,6 +196,168 @@ classdef GRULayer
 
 
     methods % rechability analysis method
+        function O = reach1_pytorch_opt(varargin)
+            % with IdentityXIdentity only
+            % @I: an array of inputs set sequence
+            % @method: none
+            % @option:  'parallel' use parallel computing
+            %           '[]' or not declared -> don't use parallel
+            %           computing
+            % @O: a cell of output sets sequence, length(O) = length(I)
+
+            % author: Sung Woo Choi
+            % date: 02/28/2023
+
+            switch nargin
+                case 7
+                    obj = varargin{1};
+                    I = varargin{2};
+                    method = varargin{3};
+                    obj.option = varargin{4};
+                    obj.relaxFactor = varargin{5}; % only use for approx-star method
+                    obj.dis_opt = varargin{6};
+                    obj.lp_solver = varargin{7};
+                case 6
+                    obj = varargin{1};
+                    I = varargin{2};
+                    method = varargin{3};
+                    obj.option = varargin{4};
+                    obj.relaxFactor = varargin{5}; % only use for approx-star method
+                    obj.dis_opt = varargin{6};
+                case 5
+                    obj = varargin{1};
+                    I = varargin{2};
+                    method = varargin{3};
+                    obj.option = varargin{4};
+                    obj.relaxFactor = varargin{5}; % only use for approx-star method
+                case 4
+                    obj = varargin{1};
+                    I = varargin{2};
+                    method = varargin{3};
+                    obj.option = varargin{4};
+                case 3
+                    obj = varargin{1};
+                    I = varargin{2};
+                    method = varargin{3};
+                case 2 
+                    obj = varargin{1};
+                    I = varargin{2};
+                    method = 'approx-star';
+                otherwise
+                    error('Invalid number of input arguments (should be 1, 2, 3, 4, 5, or 6)');
+            end
+
+            if ~strcmp(method, 'rstar') && ...
+                ~strcmp(method, 'approx-star') && ...
+                ~strcmp(method, 'approx-sparse-star') && ...
+                ~strcmp(method, 'relax-star') && ...
+                ~strcmp(method, 'abs-dom')
+                error('Unknown reachability analysis method');
+            end
+
+            n = length(I); % number of sequence
+            O = cell(1, n); % output reachable set sequence
+            Wz = obj.Wz;
+            Uz = obj.Uz;
+            bz = obj.bz;
+            gz = obj.gz;
+            Wr = obj.Wr;
+            Ur = obj.Ur;
+            br = obj.br;
+            gr = obj.gr;
+            Wc = obj.Wc;
+            Uc = obj.Uc;
+            bc = obj.bc;
+            gc = obj.gc;
+
+            WZ = []; % mapped input set: Wz = Wz*I + bz
+            WR = []; % mapped input set: Wr = Wr*I + br
+            WC = []; % mapped input set: Wc = Wc*I + bc
+
+            rF = obj.relaxFactor;
+            dis = obj.dis_opt;
+            lps = obj.lp_solver;
+
+            if strcmp(obj.option, 'parallel') % reachability analysis using star set
+            else
+                for i = 1:n
+                    if isa(I(i), 'SparseStar') || isa(I(i), 'Star')
+                        WZ = [WZ I(i).affineMap(Wz, bz + gz)];
+                        WR = [WR I(i).affineMap(Wr, br + gr)];
+                        WC = [WC I(i).affineMap(Wc, bc)];
+                    else
+                        error('Star and SparseStar are only supported for GRULayer reachability analysis');
+                    end
+                end
+
+                H1 = cell(1, n);
+                for t = 1:n
+                    if t == 1
+                        %   z[t] = sigmoid(Wz * x[t] + bz + gz) => Zt
+                        %   r[t] = sigmoid(Wr * x[t] + br + gr) => Rt
+                        %   c[t] = tanh(Wc * x[t] + bc + r[t] o gc) 
+                        %        => tansig(WC + Rt o gc) 
+                        %        = tansig(WC + Rtgc)
+                        %        = tansig(T) = Ct
+                        %   h[t] = (1 - z[t]) o c[t]
+                        %        => (1 - Zt) o Ct
+                        %        = InZt o Ct
+                        
+                        Zt = LogSig.reach(WZ(1), method, [], rF, dis, lps);
+                        Rt = LogSig.reach(WR(1), method, [], rF, dis, lps);
+                        Rtgc = Rt.affineMap(diag(gc), []);
+                        T = WC(1).Sum(Rtgc);
+                        Ct = TanSig.reach(T, method, [], rF, dis, lps);
+
+                        InZt = Zt.affineMap(-eye(Zt.dim), ones(Zt.dim, 1));
+                        H1{t} = IdentityXIdentity.reach(InZt, Ct, method, rF, dis, lps);
+                    else
+                        % z[t] = sigmoid(Wz * x[t] + bz + Uz * h[t-1] + gz)
+                        %      => sigmoid(WZ + UZ) = Zt
+                        % r[t] = sigmoid(Wr * x[t] + br + Ur * h[t-1] + gr)
+                        %      => sigmoid(WR + UR) = sigmoid(WUr) = Rt
+                        % c[t] = tanh(Wc * x[t] + bc + r[t] o (Uc * h[t-1]  + gc))
+                        %      => tanh(WC + Rt o UC)
+                        %      = tanh(WC + IdentityXIdentity(Rt, UC))
+                        %      = tanh(WUc) = Ct1
+                        % h[t] = z[t] o h[t-1] + (1 - z[t]) o c[t]
+                        %      => IdentityXIdentity(Zt, H{t-1}) + IdentityXIdentity(1-Zt, Ct)
+                        %      = ZtHt_1 + IdentityXIdentity(InZt, Ct)
+                        %      = ZtHt_1 + ZtCt
+
+                        if t >= 4
+                            [lb, ub] = H1{t-1}.getRanges(lps);
+                            Ht_1 = SparseStar(lb, ub);
+                        else
+                            Ht_1 = H1{t-1};
+                        end
+            
+                        UZ = Ht_1.affineMap(Uz, []);
+                        WUz = WZ(t).Sum(UZ);
+                        Zt = LogSig.reach(WUz, method, [], rF, dis, lps);
+                        
+                        UR = Ht_1.affineMap(Ur, []);
+                        WUr = WR(t).Sum(UR);
+                        Rt = LogSig.reach(WUr, method, [], rF, dis, lps);
+                        
+                        UC = Ht_1.affineMap(Uc, gc);
+                        RtUC = IdentityXIdentity.reach(Rt, UC, method, rF, dis, lps);
+                        WUc = WC(t).Sum(RtUC);
+                        Ct1 = TanSig.reach(WUc, method, [], rF, dis, lps);
+            
+                        ZtHt_1 = IdentityXIdentity.reach(Zt, Ht_1, method, rF, dis, lps);
+                        InZt = Zt.affineMap(-eye(Zt.dim), ones(Zt.dim, 1));
+                        ZtCt = IdentityXIdentity.reach(InZt, Ct1, method, rF, dis, lps);
+                        H1{t} = ZtHt_1.Sum(ZtCt);
+
+                        t
+                    end
+                end
+                O = H1;
+            end
+
+        end
+
 
         function O = reach1_pytorch(varargin)
             % with IdentityXIdentity only
@@ -312,10 +474,6 @@ classdef GRULayer
 
                         InZt = Zt.affineMap(-eye(Zt.dim), ones(Zt.dim, 1));
                         H1{t} = IdentityXIdentity.reach(InZt, Ct, method, rF, dis, lps);
-                        
-%                         S = IdentityXIdentity.reach(InZt, Ct, method, rF, dis, lps);
-%                         [lb, ub] = S.getRanges();
-%                         H1{t} = Star(lb, ub); 
                     else
                         % z[t] = sigmoid(Wz * x[t] + bz + Uz * h[t-1] + gz)
                         %      => sigmoid(WZ + UZ) = Zt
@@ -330,36 +488,33 @@ classdef GRULayer
                         %      = ZtHt_1 + IdentityXIdentity(InZt, Ct)
                         %      = ZtHt_1 + ZtCt
 
-%                         t
-%                         if t == 4
-%                             disp(' ');
-%                         end
-
                         Ht_1 = H1{t-1};
             
                         UZ = Ht_1.affineMap(Uz, []);
-                        WUz = WZ(t).Sum(UZ);
+%                         WUz = WZ(t).Sum(UZ);
+                        WUz = UZ.Sum(WZ(t));
                         Zt = LogSig.reach(WUz, method, [], rF, dis, lps);
                         
                         UR = Ht_1.affineMap(Ur, []);
-                        WUr = WR(t).Sum(UR);
+%                         WUr = WR(t).Sum(UR);
+                        WUr = UR.Sum(WR(t));
                         Rt = LogSig.reach(WUr, method, [], rF, dis, lps);
                         
                         UC = Ht_1.affineMap(Uc, gc);
                         RtUC = IdentityXIdentity.reach(Rt, UC, method, rF, dis, lps);
-                        WUc = WC(t).Sum(RtUC);
+%                         WUc = WC(t).Sum(RtUC);
+                        WUc = RtUC.Sum(WC(t));
                         Ct1 = TanSig.reach(WUc, method, [], rF, dis, lps);
             
                         ZtHt_1 = IdentityXIdentity.reach(Zt, Ht_1, method, rF, dis, lps);
                         InZt = Zt.affineMap(-eye(Zt.dim), ones(Zt.dim, 1));
                         ZtCt = IdentityXIdentity.reach(InZt, Ct1, method, rF, dis, lps);
                         H1{t} = ZtHt_1.Sum(ZtCt);
-
-%                         S = ZtHt_1.Sum(ZtCt);
-%                         [lb, ub] = S.getRanges();
-%                         H1{t} = Star(lb, ub); 
-
+                        
                         t
+%                         if t == 4
+%                             break;
+%                         end
                     end
                 end
                 O = H1;

@@ -8,11 +8,13 @@ classdef SparseStar
         dim = 0; % dimension of star set
         nVar = 0; % number of variables in the constraints
 
-        pred_lb = []; % lower bound vector of predicate variable
-        pred_ub = []; % upper bound vector of predicate variable
+        pred_lb = []; % lower bound vector of predicate variables
+        pred_ub = []; % upper bound vector of predicate variables
         
         state_lb = []; % lower bound of state variables
         state_ub = []; % upper bound of state variables
+
+        pred_depth = []; % depth of predicate variables
         
         lps = []; %'linprog'; % options: 'linprog', 'glpk', or 'estimate'
         par = []; %'single'; % ottions: 'singple', or 'parallel'
@@ -27,76 +29,21 @@ classdef SparseStar
             % @d: constraint vector
             
             switch nargin
-                
-                case 7
+
+                case 6
                     A = varargin{1};
                     C = varargin{2};
                     d = varargin{3};
                     pred_lb = varargin{4};
                     pred_ub = varargin{5};
-                    state_lb = varargin{6};
-                    state_ub = varargin{7};
+                    pred_depth = varargin{6};
                     
                     [nA, mA] = size(A);
                     [nC, mC] = size(C);
                     [nd, md] = size(d);
                     [n1, m1] = size(pred_lb);
                     [n2, m2] = size(pred_ub);
-                    [n3, m3] = size(state_lb);
-                    [n4, m4] = size(state_ub);
-                    
-%                     if mA ~= mC + 1
-%                         error('Inconsistency between basic matrix and constraint matrix');
-%                     end
-
-                    if nC ~= nd
-                        error('Inconsistency between constraint matrix and constraint vector');
-                    end
-
-                    if md ~= 1
-                        error('constraint vector should have one column');
-                    end
-                    
-                    if m1 ~=1 || m2 ~=1 
-                        error('predicate lower- or upper-bounds vector should have one column');
-                    end
-                    
-                    if n1 ~= n2 || n1 ~= mC
-                        error('Inconsistency between number of predicate variables and predicate lower- or upper-bounds vector');
-                    end
-                    
-                    if n3 ~= nA || n4 ~= nA
-                        error('Inconsistent dimension between lower bound and upper bound vector of state variables and matrix V');
-                    end
-                    
-                    if m3 ~= 1 || m4 ~= 1
-                        error('Invalid lower bound or upper bound vector of state variables');
-                    end
-
-                    obj.A = A;
-                    obj.C = C;
-                    obj.d = d;
-                    
-                    obj.dim = nA;
-                    obj.nVar = mC;
-                    obj.pred_lb = pred_lb;
-                    obj.pred_ub = pred_ub;
-                    obj.state_lb = state_lb;
-                    obj.state_ub = state_ub;
-
-                
-                case 5
-                    A = varargin{1};
-                    C = varargin{2};
-                    d = varargin{3};
-                    pred_lb = varargin{4};
-                    pred_ub = varargin{5};
-                    
-                    [nA, mA] = size(A);
-                    [nC, mC] = size(C);
-                    [nd, md] = size(d);
-                    [n1, m1] = size(pred_lb);
-                    [n2, m2] = size(pred_ub);
+                    [n3, m3] = size(pred_depth);
 
 %                     if mA ~= mC + 1
 %                         error('Inconsistency between basic matrix and constraint matrix');
@@ -118,6 +65,14 @@ classdef SparseStar
                         error('Inconsistency between number of predicate variables and predicate lower- or upper-bounds vector');
                     end
 
+                    if m3 ~= 1
+                        error('predicate depth should have one column');
+                    end
+
+                    if n3 ~= mC
+                        error('Iconsistency in number of predicates between predicate depth array and constraint matrix');
+                    end
+
                     obj.A = A;
                     obj.C = C;
                     obj.d = d;
@@ -125,15 +80,16 @@ classdef SparseStar
                     obj.nVar = mC;
                     obj.pred_lb = pred_lb;
                     obj.pred_ub = pred_ub;
+                    obj.pred_depth = pred_depth;
                 
                 case 3
                     A = varargin{1};
                     C = varargin{2};
                     d = varargin{3};
+
                     [nA, mA] = size(A);
                     [nC, mC] = size(C);
                     [nd, md] = size(d);
-                    
                     
                     if mA ~= mC + 1
                         error('Inconsistency between basic matrix and constraint matrix');
@@ -150,7 +106,6 @@ classdef SparseStar
                     obj.A = A;
                     obj.C = C;
                     obj.d = d;
-                    
                     obj.dim = nA;
                     obj.nVar = mC;
                                                             
@@ -193,6 +148,8 @@ classdef SparseStar
                     obj.state_ub = ones(dim, 1);
                     obj.pred_lb = obj.state_lb;
                     obj.pred_ub = obj.state_ub;
+                    
+                    obj.pred_depth = zeros(dim, 1);
                  
                 case 1 % accept a polyhedron as an input and transform to a star
                     I = varargin{1};
@@ -213,6 +170,7 @@ classdef SparseStar
                     [lb, ub] = obj.getRanges;
                     obj.pred_lb = lb;
                     obj.pred_ub = ub;
+                    obj.pred_depth = zeros(I.Dim, 1);
                 
                 case 0
                     % create empty Star (for preallocation an array of star)
@@ -253,7 +211,7 @@ classdef SparseStar
                 newA = W * obj.A;
             end
             
-            S = SparseStar(newA, obj.C, obj.d, obj.pred_lb, obj.pred_ub);
+            S = SparseStar(newA, obj.C, obj.d, obj.pred_lb, obj.pred_ub, obj.pred_depth);
         end
 
         function f = V(obj)
@@ -495,12 +453,14 @@ classdef SparseStar
                 mXd = X.nVar+1-mXA;
                 new_pred_lb = [obj.pred_lb(1:mOd); X.pred_lb(1:mXd); obj.pred_lb(mOd+1:obj.nVar); X.pred_lb(mXd+1:X.nVar)];
                 new_pred_ub = [obj.pred_ub(1:mOd); X.pred_ub(1:mXd); obj.pred_ub(mOd+1:obj.nVar); X.pred_ub(mXd+1:X.nVar)];
+                new_pred_depth = [obj.pred_depth(1:mOd); X.pred_depth(1:mXd); obj.pred_depth(mOd+1:obj.nVar); X.pred_depth(mXd+1:X.nVar)];
             else
                 new_pred_lb = [];
                 new_pred_ub = [];
+                new_pred_depth = [];
             end
 
-            S = SparseStar(new_A, new_C, new_d, new_pred_lb, new_pred_ub);       
+            S = SparseStar(new_A, new_C, new_d, new_pred_lb, new_pred_ub, new_pred_depth);       
         end
         
         % get lower bound and upper bound vector of the state variable
@@ -951,6 +911,147 @@ classdef SparseStar
             end
      
         end
+        
+        % finds the depth of the predicate
+        function d = get_pred_depth()
+
+        end
+
+        % finds the maximum depth of the predicate tree
+        function d = max_pred_depth(obj)
+            % @d: maximum depth of the predicate tree
+            
+        end
+    
+        % order reduction for SparseStars
+        % reduces number of predicates
+        function S = orderReduction(obj, p_max)
+            % @p_max: maximum allowable number of predicates 
+            % @S: a new Star with number of predicates
+        end
+        
+        % predicate reduction for SparseStars
+        % reduces specific predicate variables
+        function S = predReduction(obj, p_map)
+            % @p_map: an array of predicate indexes
+            % @S: a new Star with reduced predicate variables
+
+            % author: Sung Woo Choi
+            % date: 03/27/2023
+
+            if sum(p_map > obj.nVar - obj.dim | p_map < 0)
+                error('predicate variable corresponding to the current dimension cannot be reduced or it does not exists');
+            end
+
+            C = obj.C;
+            d = obj.d;
+            pred_lb = obj.pred_lb;
+            pred_ub = obj.pred_ub;
+            pred_depth = obj.pred_depth;
+
+            pred_depth(p_map) = [];
+            pred_lb(p_map) = [];
+            pred_ub(p_map) = [];
+            
+            [nC, mC] = find(C(:,p_map));
+            u = unique(nC);
+            d(u) = [];
+            C(u, :) = [];
+            C(:, p_map) = [];
+            
+            if isempty(d)
+                n = size(pred_lb, 1);
+                C = zeros(1, n);
+                d = 0;
+            end
+
+            S = SparseStar(obj.A, C, d, pred_lb, pred_ub, pred_depth);
+        end
+        
+        % reduces predicates based on the depth SparseStar predicate tree
+        function S = depthReduction(obj, d_max)
+            % @d_max: maximum allowed depth of the tree
+            % @S: a new Star with reduced depth of predciate tree.
+            
+            % author: Sung Woo Choi
+            % date: 03/22/2023
+
+            max_depth = max(obj.pred_depth);
+
+            if d_max < 1
+                error('d_max should be non-negative integer');
+            end
+
+            if d_max > max_depth
+                S = obj;
+                return;
+            end
+
+            map = find(obj.pred_depth >= d_max);
+            S = obj.predReduction(map);
+
+%             C = obj.C;
+%             d = obj.d;
+%             pred_lb = obj.pred_lb;
+%             pred_ub = obj.pred_ub;
+%             pred_depth = obj.pred_depth;
+%             
+%             map = find(pred_depth >= d_max);
+%             pred_depth(map) = [];
+%             pred_lb(map) = [];
+%             pred_ub(map) = [];
+%             
+%             [nC, mC] = find(C(:,map));
+%             u = unique(nC);
+%             d(u) = [];
+%             C(u, :) = [];
+%             C(:, map) = [];
+%             
+%             if isempty(d)
+%                 n = size(pred_lb, 1);
+%                 C = zeros(1, n);
+%                 d = 0;
+%             end
+% 
+%             S = SparseStar(obj.A, C, d, pred_lb, pred_ub, pred_depth);
+        end
+        
+        % reduces predicate constraints based on the depth of SparseStar
+        % predicate tree
+        function S = cstrReduction(obj, d_max)
+            max_depth = max(obj.pred_depth);
+
+            if d_max < 1
+                error('d_max should be non-negative integer');
+            end
+
+            if d_max > max_depth
+                retunr S;
+            end
+
+            C = obj.C;
+            d = obj.d;
+            pred_lb = obj.pred_lb;
+            pred_ub = obj.pred_ub;
+            pred_depth = obj.pred_depth;
+
+            map = find(pred_depth >= d_max);
+            pred_depth(map) = [];
+
+            [nC, mC] = find(C(:,map));
+            u = unique(nC);
+            d(u) = [];
+            C(u, :) = [];
+            
+            if isempty(d)
+                n = size(pred_lb, 1);
+                C = zeros(1, n);
+                d = 0;
+            end
+
+            S = SparseStar(obj.A, C, d, pred_lb, pred_ub, pred_depth);
+        end
+
 
         % conver to star
         function S = toStar(obj)
@@ -1109,6 +1210,10 @@ classdef SparseStar
             
             
         end
+
+    end
+
+    methods(Static)
 
         % generate random sparse star set
         function S = rand(dim)
