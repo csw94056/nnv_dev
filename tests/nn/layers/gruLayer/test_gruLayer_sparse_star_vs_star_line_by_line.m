@@ -14,7 +14,7 @@ clc; clear; close all;
 % output, hn = smallest_gru_model(input, h0)
 format long;
 
-plot_figure = 0;
+plot_figure = 1;
 
 input_size = 2;
 hidden_size = 2;
@@ -118,7 +118,7 @@ reachMethod = 'approx-sparse-star';
 option = [];
 relaxFactor = 0;
 dis_opt = [];
-lp_solver = 'linprog'; %'linprog'; %'glpk';
+lp_solver = 'glpk'; %'linprog'; %'glpk';
 % compute reach sets
 % Y = L.reach(X, reachMethod, option, relaxFactor, dis_opt, lp_solver);
 
@@ -304,6 +304,22 @@ else
         else
             Ht_1 = H1{t-1};
             Hts_1 = H1s{t-1};
+            
+            fprintf('sequence %d\n', t);
+            T = table;
+            T.SparseStar_lb_glpk = Ht_1.getMins(1:Ht_1.dim, 'single',[], 'glpk');
+            T.Star_lb_glpk = Hts_1.getMins(1:Hts_1.dim, 'single',[], 'glpk');
+
+            T.SparseStar_lb_gurobi = Ht_1.getMins(1:Ht_1.dim, 'single',[], 'linprog');
+            T.Star_lb_gurobi = Hts_1.getMins(1:Hts_1.dim, 'single',[], 'linprog');
+            
+            T.SparseStar_ub_glpk = Ht_1.getMaxs(1:Ht_1.dim, 'single',[], 'glpk');
+            T.Star_ub_glpk = Hts_1.getMaxs(1:Hts_1.dim, 'single',[], 'glpk');
+            
+            T.SparseStar_ub_gurobi = Ht_1.getMaxs(1:Ht_1.dim, 'single',[], 'linprog');
+            T.Star_ub_gurobi = Hts_1.getMaxs(1:Hts_1.dim, 'single',[], 'linprog');
+            T
+
 
             %%%%%%%%%%%%%%%%%%%% Samples %%%%%%%%%%%%%%
             if plot_figure
@@ -493,13 +509,14 @@ else
                 title(stitle);
             end
 
-
+            disp('');
         end
     end
     O = H1;
 end
 %}
 
+%{
 if plot_figure
     % plot(h{i}(1, t), h{i}(2, t), '*k');
     figure('Name', 'Output')
@@ -522,7 +539,7 @@ if plot_figure
         SampleY{i} = permute( SampleY{i}, [3 1 2]);
     end
 end
-
+%}
 
 %{
 figure('Name', 'Output')
@@ -547,6 +564,7 @@ end
 % dis_opt = [];
 % lp_solver = 'glpk';
 
+%{
 disp('Output, Option 1');
 Y = L.reach1_pytorch(X, 'approx-sparse-star', option, relaxFactor, dis_opt, lp_solver);
 Ys = L.reach1_pytorch(Xs, 'approx-star', option, relaxFactor, dis_opt, lp_solver);
@@ -568,3 +586,4 @@ if plot_figure
         title(s);
     end
 end
+%}

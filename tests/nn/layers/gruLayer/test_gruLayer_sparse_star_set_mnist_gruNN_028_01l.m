@@ -55,17 +55,18 @@ end
 
 
 % Sample input sets and compute output of GRULayer
-% num_sample = 500;
-% SampleX = cell(1, n);
-% for i = 1:n
-%     SampleX{i} = X(i).sample(num_sample);
-% end
-% 
-% Sample_x = cell(1, num_sample);
-% for i = 1:num_sample
-%     T = [SampleX{1}(:,i), SampleX{2}(:,i), SampleX{3}(:,i), SampleX{4}(:,i), SampleX{5}(:,i)];
-%     SampleInput{i} = permute(T, [2 3 1]);
-% end
+num_sample = 500;
+SampleX = cell(1, n);
+for i = 1:n
+    SampleX{i} = X(i).sample(num_sample);
+end
+
+SampleInput= cell(1, num_sample);
+for i = 1:n
+    for j = 1:num_sample
+        SampleInput{i} = permute(SampleX{n}, [2 3 1]);
+    end
+end
 
 
 
@@ -129,35 +130,37 @@ disp('SparsStar time:')
 tic;
 Y = L1.reach1_pytorch(X, reachMethod, option, relaxFactor, dis_opt, lp_solver);
 toc
-disp('Star time:')
-tic;
+% disp('Star time:')
+% tic;
 % R = L1.reach1_pytorch(S, reachMethod, option, relaxFactor, dis_opt, lp_solver);
-toc
-% for i = 1:num_sample
-%     SampleY{i} = L1.evaluate(SampleInput{i});
-% end
+% toc
+
+
+for i = 1:num_sample
+    SampleY{i} = L1.evaluate(SampleInput{i});
+end
 
 % [lb, ub] = O1{28}.getRanges();
 % T = table();
 % T.lb = lb;
 % T.ub = ub;
 % 
-% max_ = -ones(28, 1);
-% min_ = ones(28, 1);
-% for i = 1:num_sample
-%     SampleY{i} = permute( SampleY{i}, [3 1 2]);
-% 
-%     for j = 28:28
-%         for k = 1:28
-%             if max_ < SampleY{i}(:, j);
-%                 max_(k, j) =  SampleY{i}(:, j);
-%             end
-%             if min_ > SampleY{i}(:, j);
-%                 min_(k, j) =  SampleY{i}(:, j);
-%             end
-%         end
-%     end
-% end
+max_ = -ones(28, 28);
+min_ = ones(28, 28);
+for i = 1:28
+    SampleT{i} = permute( SampleY{i}, [3 1 2]);
+end
+for i = 1:28 %sequence
+    for j = 1:28 %dime
+        max_(i,j) = max(SampleT{i}(j, :));
+        min_(i,j) = min(SampleT{i}(j, :));
+    end
+end
+T = table;
+[T.lb, T.ub] = Y{1}.getRanges('linprog');
+T.s_lb = min_(1, :)';
+T.s_ub = max_(1, :)';
+
 
 % disp('Plotting Output, Option 1')
 % figure('Name', 'Output, Option 1')

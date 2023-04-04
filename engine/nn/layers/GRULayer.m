@@ -47,6 +47,7 @@ classdef GRULayer
         dis_opt = []; % display option, 'display' or []
         lp_solver = 'glpk'; % lp solver option, 'linprog' or 'glpk'
         relaxFactor = 0; % use only for approx-star method
+        depthReduct = 0; % use for predicate reduction based on the depth of predicate tree
     end
     
     methods % Constructor - evaluation
@@ -209,6 +210,15 @@ classdef GRULayer
             % date: 02/28/2023
 
             switch nargin
+                case 8
+                    obj = varargin{1};
+                    I = varargin{2};
+                    method = varargin{3};
+                    obj.option = varargin{4};
+                    obj.relaxFactor = varargin{5}; % only use for approx-star method
+                    obj.depthReduct = varargin{6};
+                    obj.dis_opt = varargin{7};
+                    obj.lp_solver = varargin{8};
                 case 7
                     obj = varargin{1};
                     I = varargin{2};
@@ -244,7 +254,7 @@ classdef GRULayer
                     I = varargin{2};
                     method = 'approx-star';
                 otherwise
-                    error('Invalid number of input arguments (should be 1, 2, 3, 4, 5, or 6)');
+                    error('Invalid number of input arguments (should be between 2 and 8)');
             end
 
             if ~strcmp(method, 'rstar') && ...
@@ -275,6 +285,7 @@ classdef GRULayer
             WC = []; % mapped input set: Wc = Wc*I + bc
 
             rF = obj.relaxFactor;
+            dR = obj.depthReduct;
             dis = obj.dis_opt;
             lps = obj.lp_solver;
 
@@ -303,14 +314,14 @@ classdef GRULayer
                         %        => (1 - Zt) o Ct
                         %        = InZt o Ct
                         
-                        Zt = LogSig.reach(WZ(1), method, [], rF, dis, lps);
-                        Rt = LogSig.reach(WR(1), method, [], rF, dis, lps);
+                        Zt = LogSig.reach(WZ(1), method, [], rF, dR, dis, lps);
+                        Rt = LogSig.reach(WR(1), method, [], rF, dR, dis, lps);
                         Rtgc = Rt.affineMap(diag(gc), []);
                         T = WC(1).Sum(Rtgc);
-                        Ct = TanSig.reach(T, method, [], rF, dis, lps);
+                        Ct = TanSig.reach(T, method, [], rF, dR, dis, lps);
 
                         InZt = Zt.affineMap(-eye(Zt.dim), ones(Zt.dim, 1));
-                        H1{t} = IdentityXIdentity.reach(InZt, Ct, method, rF, dis, lps);
+                        H1{t} = IdentityXIdentity.reach(InZt, Ct, method, rF, dR, dis, lps);
                     else
                         % z[t] = sigmoid(Wz * x[t] + bz + Uz * h[t-1] + gz)
                         %      => sigmoid(WZ + UZ) = Zt
@@ -334,20 +345,20 @@ classdef GRULayer
             
                         UZ = Ht_1.affineMap(Uz, []);
                         WUz = WZ(t).Sum(UZ);
-                        Zt = LogSig.reach(WUz, method, [], rF, dis, lps);
+                        Zt = LogSig.reach(WUz, method, [], rF, dR, dis, lps);
                         
                         UR = Ht_1.affineMap(Ur, []);
                         WUr = WR(t).Sum(UR);
-                        Rt = LogSig.reach(WUr, method, [], rF, dis, lps);
+                        Rt = LogSig.reach(WUr, method, [], rF, dR, dis, lps);
                         
                         UC = Ht_1.affineMap(Uc, gc);
-                        RtUC = IdentityXIdentity.reach(Rt, UC, method, rF, dis, lps);
+                        RtUC = IdentityXIdentity.reach(Rt, UC, method, rF, dR, dis, lps);
                         WUc = WC(t).Sum(RtUC);
-                        Ct1 = TanSig.reach(WUc, method, [], rF, dis, lps);
+                        Ct1 = TanSig.reach(WUc, method, [], rF, dR, dis, lps);
             
-                        ZtHt_1 = IdentityXIdentity.reach(Zt, Ht_1, method, rF, dis, lps);
+                        ZtHt_1 = IdentityXIdentity.reach(Zt, Ht_1, method, rF, dR, dis, lps);
                         InZt = Zt.affineMap(-eye(Zt.dim), ones(Zt.dim, 1));
-                        ZtCt = IdentityXIdentity.reach(InZt, Ct1, method, rF, dis, lps);
+                        ZtCt = IdentityXIdentity.reach(InZt, Ct1, method, rF, dR, dis, lps);
                         H1{t} = ZtHt_1.Sum(ZtCt);
 
                         t
@@ -372,6 +383,15 @@ classdef GRULayer
             % date: 02/28/2023
 
             switch nargin
+                case 8
+                    obj = varargin{1};
+                    I = varargin{2};
+                    method = varargin{3};
+                    obj.option = varargin{4};
+                    obj.relaxFactor = varargin{5}; % only use for approx-star method
+                    obj.depthReduct = varargin{6};
+                    obj.dis_opt = varargin{7};
+                    obj.lp_solver = varargin{8};
                 case 7
                     obj = varargin{1};
                     I = varargin{2};
@@ -438,6 +458,7 @@ classdef GRULayer
             WC = []; % mapped input set: Wc = Wc*I + bc
 
             rF = obj.relaxFactor;
+            dR = obj.depthReduct;
             dis = obj.dis_opt;
             lps = obj.lp_solver;
 
@@ -455,6 +476,7 @@ classdef GRULayer
 
                 H1 = cell(1, n);
                 for t = 1:n
+                    t
                     if t == 1
                         %   z[t] = sigmoid(Wz * x[t] + bz + gz) => Zt
                         %   r[t] = sigmoid(Wr * x[t] + br + gr) => Rt
@@ -466,14 +488,14 @@ classdef GRULayer
                         %        => (1 - Zt) o Ct
                         %        = InZt o Ct
                         
-                        Zt = LogSig.reach(WZ(1), method, [], rF, dis, lps);
-                        Rt = LogSig.reach(WR(1), method, [], rF, dis, lps);
+                        Zt = LogSig.reach(WZ(1), method, [], rF, dR, dis, lps);
+                        Rt = LogSig.reach(WR(1), method, [], rF, dR, dis, lps);
                         Rtgc = Rt.affineMap(diag(gc), []);
                         T = WC(1).Sum(Rtgc);
-                        Ct = TanSig.reach(T, method, [], rF, dis, lps);
+                        Ct = TanSig.reach(T, method, [], rF, dR, dis, lps);
 
                         InZt = Zt.affineMap(-eye(Zt.dim), ones(Zt.dim, 1));
-                        H1{t} = IdentityXIdentity.reach(InZt, Ct, method, rF, dis, lps);
+                        H1{t} = IdentityXIdentity.reach(InZt, Ct, method, rF, dR, dis, lps);
                     else
                         % z[t] = sigmoid(Wz * x[t] + bz + Uz * h[t-1] + gz)
                         %      => sigmoid(WZ + UZ) = Zt
@@ -493,28 +515,28 @@ classdef GRULayer
                         UZ = Ht_1.affineMap(Uz, []);
 %                         WUz = WZ(t).Sum(UZ);
                         WUz = UZ.Sum(WZ(t));
-                        Zt = LogSig.reach(WUz, method, [], rF, dis, lps);
+                        Zt = LogSig.reach(WUz, method, [], rF, dR, dis, lps);
                         
                         UR = Ht_1.affineMap(Ur, []);
 %                         WUr = WR(t).Sum(UR);
                         WUr = UR.Sum(WR(t));
-                        Rt = LogSig.reach(WUr, method, [], rF, dis, lps);
+                        Rt = LogSig.reach(WUr, method, [], rF, dR, dis, lps);
                         
                         UC = Ht_1.affineMap(Uc, gc);
-                        RtUC = IdentityXIdentity.reach(Rt, UC, method, rF, dis, lps);
+                        RtUC = IdentityXIdentity.reach(Rt, UC, method, rF, dR, dis, lps);
 %                         WUc = WC(t).Sum(RtUC);
                         WUc = RtUC.Sum(WC(t));
-                        Ct1 = TanSig.reach(WUc, method, [], rF, dis, lps);
+                        Ct1 = TanSig.reach(WUc, method, [], rF, dR, dis, lps);
             
-                        ZtHt_1 = IdentityXIdentity.reach(Zt, Ht_1, method, rF, dis, lps);
+                        ZtHt_1 = IdentityXIdentity.reach(Zt, Ht_1, method, rF, dR, dis, lps);
                         InZt = Zt.affineMap(-eye(Zt.dim), ones(Zt.dim, 1));
-                        ZtCt = IdentityXIdentity.reach(InZt, Ct1, method, rF, dis, lps);
+                        ZtCt = IdentityXIdentity.reach(InZt, Ct1, method, rF, dR, dis, lps);
                         H1{t} = ZtHt_1.Sum(ZtCt);
-                        
-                        t
-%                         if t == 4
-%                             break;
-%                         end
+
+                        if t >= 5
+                            disp('');
+                            break;
+                        end
                     end
                 end
                 O = H1;

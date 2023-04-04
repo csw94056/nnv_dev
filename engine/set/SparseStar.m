@@ -129,7 +129,7 @@ classdef SparseStar
                     dim = n1;
                     center = 0.5 * (lb + ub);
                     vec = 0.5 * (ub - lb);
-
+    
                     if norm(vec) == 0
                         vec = zeros(dim, 1);
                     end
@@ -531,7 +531,7 @@ classdef SparseStar
                 return;
             end
 
-            if isempty(obj.lps)
+            if isempty(obj.lps) && isempty(lps)
                 lps = 'linprog';
             end
 
@@ -1018,39 +1018,54 @@ classdef SparseStar
         
         % reduces predicate constraints based on the depth of SparseStar
         % predicate tree
-        function S = cstrReduction(obj, d_max)
-            max_depth = max(obj.pred_depth);
-
-            if d_max < 1
-                error('d_max should be non-negative integer');
-            end
-
-            if d_max > max_depth
-                retunr S;
-            end
-
-            C = obj.C;
-            d = obj.d;
-            pred_lb = obj.pred_lb;
-            pred_ub = obj.pred_ub;
-            pred_depth = obj.pred_depth;
-
-            map = find(pred_depth >= d_max);
-            pred_depth(map) = [];
-
-            [nC, mC] = find(C(:,map));
-            u = unique(nC);
-            d(u) = [];
-            C(u, :) = [];
-            
-            if isempty(d)
-                n = size(pred_lb, 1);
-                C = zeros(1, n);
-                d = 0;
-            end
-
-            S = SparseStar(obj.A, C, d, pred_lb, pred_ub, pred_depth);
-        end
+%         function S = cstrReduction(obj, d_max)
+%             max_depth = max(obj.pred_depth);
+% 
+%             if d_max < 1
+%                 error('d_max should be non-negative integer');
+%             end
+% 
+%             if d_max > max_depth
+%                 retunr S;
+%             end
+% 
+%             C = obj.C;
+%             d = obj.d;
+%             pred_lb = obj.pred_lb;
+%             pred_ub = obj.pred_ub;
+%             pred_depth = obj.pred_depth;
+% 
+%             map = find(pred_depth >= d_max);
+%             pred_depth(map) = -1;
+% 
+%             lb = pred_lb(map);
+%             ub = pred_ub(map);
+%             dim = obj.dim;
+%             center = 0.5 * (lb + ub);
+%             vec = 0.5 * (ub - lb);
+% 
+%             if norm(vec) == 0
+%                 vec = zeros(dim, 1);
+%             end
+% 
+% 
+% %             I = [diag(vec), eye(dim), zeros(dim, obj.nVar-2*dim)];
+%             I = 
+% 
+%             [nC, mC] = find(C(:,map));
+%             u = unique(nC);
+%             d(u) = [];
+%             C(u, :) = [];
+%             C = [I; Ct];St
+%             
+%             if isempty(d)
+%                 n = size(pred_lb, 1);
+%                 C = zeros(1, n);
+%                 d = 0;
+%             end
+% 
+%             S = SparseStar(obj.A, C, d, pred_lb, pred_ub, pred_depth);
+%         end
 
 
         % conver to star
@@ -1089,7 +1104,7 @@ classdef SparseStar
 %                     B = Box(obj.state_lb, obj.state_ub);
                 if 0
                 else
-                    [lb, ub] = obj.getRanges('linprog')
+                    [lb, ub] = obj.getRanges('linprog');
 
                     if isempty(lb) || isempty(ub)
                         B = [];

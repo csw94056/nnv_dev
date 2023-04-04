@@ -110,22 +110,25 @@ end
 reachMethod = 'approx-star';
 sparse_reachMethod = 'approx-sparse-star';
 option = [];
+depthReduct = 0;
 relaxFactor = 0;
 dis_opt = [];
 lp_solver = 'glpk';
 
 disp('Output, Option 1');
-disp('Star')
-O1 = L.reach1_pytorch(X, reachMethod, option, relaxFactor, dis_opt, lp_solver);
+% disp('Star')
+% O1 = L.reach1_pytorch(X, reachMethod, option, relaxFactor, dis_opt, lp_solver);
 disp('SparseStar')
-S01 = L.reach1_pytorch(SX, sparse_reachMethod, option, relaxFactor, dis_opt, lp_solver);
+S1 = L.reach1_pytorch(SX, sparse_reachMethod, option, relaxFactor, depthReduct, dis_opt, lp_solver);
+depthReduct = 4;
+S1d = L.reach1_pytorch(SX, sparse_reachMethod, option, relaxFactor, depthReduct, dis_opt, lp_solver);
 
 disp('Plotting Output, Option 1')
 figure('Name', 'Output, Option 1')
 for t = 1:n
     nexttile;
     hold on;
-    plot(O1{t}.getBox);
+    plot(S1{t}.getBox);
     
     for i = 1:num_sample
         hold on;
@@ -136,4 +139,35 @@ for t = 1:n
     title(s);
 end
 
+disp('Plotting Output with depthReduction, Option 1')
+figure('Name', 'Output with depthReduction, Option 1')
+for t = 1:n
+    nexttile;
+    hold on;
+    plot(S1d{t}.getBox);
+    
+    for i = 1:num_sample
+        hold on;
+        plot(SampleY{i}(t, 1, 1), SampleY{i}(t, 1, 2), '*k');
+    end
 
+    s = sprintf('Set %d', t);
+    title(s);
+end
+
+disp('SpareStar');
+[lb, ub] = S1{5}.getRanges();
+disp('SparseStar with depthReduction, d_max = 4');
+[lbd, ubd] = S1d{5}.getRanges();
+
+disp('lower bound differences');
+lbd - lb
+disp('upper bound differences');
+ubd - ub
+
+disp('SpareStar computation time');
+depthReduct = 0;
+timeit(@() L.reach1_pytorch(SX, sparse_reachMethod, option, relaxFactor, depthReduct, dis_opt, lp_solver))
+disp('SparseStar with depthReduction computation time, d_max = 4');
+depthReduct = 4;
+timeit(@() L.reach1_pytorch(SX, sparse_reachMethod, option, relaxFactor, depthReduct, dis_opt, lp_solver))

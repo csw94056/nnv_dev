@@ -51,6 +51,12 @@ classdef TanSig
                     method = varargin{2};
                     relaxFactor = varargin{3};
                     dis_opt = varargin{4}; % display option
+                    lp_solver = varargin{5};
+                case 6
+                    I = varargin{1};
+                    method = varargin{2};
+                    relaxFactor = varargin{3};
+                    dis_opt = varargin{4}; % display option
                     lp_solver = varargin{5}; 
                 otherwise
                     error('Invalid number of input arguments, should be 1, 2, 3, 4, or 5');
@@ -812,6 +818,15 @@ classdef TanSig
                 d3 = [];
             end
             
+            n = size(I.C, 1);
+            if n == 1 && nnz(I.C) == 0
+                C0 = [];
+                d0 = [];
+            else
+                C0 = [I.C zeros(n, m)];
+                d0 = I.d;
+            end
+
             new_C = [C0; C1; C2; C3];
             new_d = [d0; d1; d2; d3]; 
 
@@ -1042,6 +1057,15 @@ classdef TanSig
             else
                 C3 = [];
                 d3 = [];
+            end
+
+            n = size(I.C, 1);
+            if n == 1 && nnz(I.C) == 0
+                C0 = [];
+                d0 = [];
+            else
+                C0 = [I.C zeros(n, m)];
+                d0 = I.d;
             end
             
             new_C = [C0; C1; C2; C3];
@@ -1333,34 +1357,46 @@ classdef TanSig
                     I = varargin{1};
                     method = 'approx-sparse-star-no-split';
                     relaxFactor = 0; % for relaxed approx-star method
+                    depthReduct = 0;
                     dis_opt = [];
                     lp_solver = 'glpk';
                 case 2
                     I = varargin{1};
                     method = varargin{2};
                     relaxFactor = 0; % for relaxed approx-star method
+                    depthReduct = 0;
                     dis_opt = [];
                     lp_solver = 'glpk';
                 case 3
                     I = varargin{1};
                     method = varargin{2};
                     relaxFactor = varargin{3};
+                    depthReduct = 0;
                     dis_opt = [];
                     lp_solver = 'glpk';
                 case 4
                     I = varargin{1};
                     method = varargin{2};
                     relaxFactor = varargin{3};
-                    dis_opt = varargin{4}; % display option
+                    depthReduct = varargin{4};
+                    dis_opt = []; % display option
                     lp_solver = 'glpk';
                 case 5
                     I = varargin{1};
                     method = varargin{2};
                     relaxFactor = varargin{3};
-                    dis_opt = varargin{4}; % display option
-                    lp_solver = varargin{5}; 
+                    depthReduct = varargin{4};
+                    dis_opt = varargin{5}; % display option
+                    lp_solver = 'glpk'; 
+                case 6
+                    I = varargin{1};
+                    method = varargin{2};
+                    relaxFactor = varargin{3};
+                    depthReduct = varargin{4};
+                    dis_opt = varargin{5}; % display option
+                    lp_solver = varargin{6}; 
                 otherwise
-                    error('Invalid number of input arguments, should be 1, 2, 3, 4, or 5');
+                    error('Invalid number of input arguments, should be 1, 2, 3, 4, 5, or 6');
             end
             
             if ~isa(I, 'SparseStar')
@@ -1368,13 +1404,7 @@ classdef TanSig
             end
            
             if strcmp(method, 'approx-sparse-star-no-split') || strcmp(method, 'approx-sparse-star')
-                if relaxFactor == 0
-                    S = TanSig.sparse_multiStepTanSig_NoSplit(I, dis_opt, lp_solver);
-                else
-                    S = TanSig.sparse_relaxedMultiStepTanSig_NoSplit(I, relaxFactor, dis_opt, lp_solver);
-                end
-%             elseif strcmp(method, 'approx-sparse-star-split')
-%                 S = TanSig.reach_sparse_star_approx_split(I);
+                S = TanSig.sparse_multiStepTanSig_NoSplit(I, relaxFactor, depthReduct, dis_opt, lp_solver);
             else
                 error('Unknown reachability method');
             end
@@ -1399,23 +1429,63 @@ classdef TanSig
             switch nargin
                 case 1
                     I = varargin{1};
+                    relaxFactor = 0;
+                    depthReduct = 0;
                     dis_opt = [];
                     lp_solver = 'glpk';
                 case 2
                     I = varargin{1};
-                    dis_opt = varargin{2};
+                    relaxFactor = varargin{2};
+                    depthReduct = 0;
+                    dis_opt = [];
                     lp_solver = 'glpk';
                 case 3
                     I = varargin{1};
-                    dis_opt = varargin{2};
-                    lp_solver = varargin{3};
+                    relaxFactor = varargin{2};
+                    depthReduct = varargin{3};
+                    dis_opt = [];
+                    lp_solver = 'glpk';
+                case 4
+                    I = varargin{1};
+                    relaxFactor = varargin{2};
+                    depthReduct = varargin{3};
+                    dis_opt = varargin{4};
+                    lp_solver = 'glpk';
+                case 5
+                    I = varargin{1};
+                    relaxFactor = varargin{2};
+                    depthReduct = varargin{3};
+                    dis_opt = varargin{4};
+                    lp_solver = varargin{5};
                 otherwise
-                    error('Invalid number of input arguments, should be 1, 2 or 3');
+                    error('Invalid number of input arguments, should be 1, 2, 3, 4, or 5');
+            end
+            
+            if ~isa(I, 'SparseStar')
+                error('Input is not a SparseStar');
+            end
+            if (relaxFactor < 0) || (relaxFactor > 1)
+                error('Invalid relax factor');
             end
 
             N = I.dim;
             inds = 1:N;
-            if strcmp(lp_solver, 'estimate')
+            if relaxFactor > 0
+                [l, u] = I.estimateRanges;
+                n1 = round((1-relaxFactor)*length(l));
+                [~, midx] = sort(u - l, 'descend');
+                
+                if strcmp(dis_opt, 'display')
+                    fprintf('\nComputing (1-%.3f) x %d = %d lower-bounds, i.e. relaxing %2.2f%%: ' , relaxFactor, length(l), n1, 100*relaxFactor);
+                end
+                l2 = I.getMins(midx(1:n1), [], dis_opt, lp_solver);
+                if strcmp(dis_opt, 'display')
+                    fprintf('\nComputing (1-%.3f) x %d = %d upper-bounds, i.e. relaxing %2.2f%%: ' , relaxFactor, length(l), n1, 100*relaxFactor);
+                end
+                u2 = I.getMaxs(midx(1:n1), [], dis_opt, lp_solver);
+                l(midx(1:n1)) = l2;
+                u(midx(1:n1)) = u2;
+            elseif strcmp(lp_solver, 'estimate')
                 if strcmp(dis_opt, 'display')
                     fprintf('\nComputing lower and upper bounds: ');
                 end
@@ -1430,6 +1500,11 @@ classdef TanSig
                 end
                 u = I.getMaxs(inds, [], dis_opt, lp_solver);
             end
+
+%             map = find(u > 0.99999);
+%             u(map) = 1;
+%             map = find(l < -0.99999);
+%             l(map) = -1;
 
             yl = tansig(l);
             yu = tansig(u);
@@ -1617,6 +1692,9 @@ classdef TanSig
             new_pred_depth = [pd1; zeros(m, 1)];
 
             S = SparseStar(new_A, new_C, new_d, new_pred_lb, new_pred_ub, new_pred_depth);
+            if depthReduct > 0
+                S = S.depthReduction(depthReduct);
+            end
         end
 
     end
@@ -1636,12 +1714,20 @@ methods(Static) % main reach method
         %         7/16/2020: add lp_solver option
         
         switch nargin
-            
+            case 7
+                I = varargin{1};
+                method = varargin{2};
+                option = varargin{3};
+                relaxFactor = varargin{4}; % used for aprox-star only
+                depthReduct = varargin{5};
+                dis_opt = varargin{6}; % display option
+                lp_solver = varargin{7};
             case 6
                 I = varargin{1};
                 method = varargin{2};
                 option = varargin{3};
                 relaxFactor = varargin{4}; % used for aprox-star only
+                depthReduct = 0;
                 dis_opt = varargin{5}; % display option
                 lp_solver = varargin{6};
             case 5
@@ -1649,6 +1735,7 @@ methods(Static) % main reach method
                 method = varargin{2};
                 option = varargin{3};
                 relaxFactor = varargin{4}; % used for aprox-star only
+                depthReduct = 0;
                 dis_opt = varargin{5}; % display option
                 lp_solver = 'glpk';
             case 4
@@ -1656,6 +1743,7 @@ methods(Static) % main reach method
                 method = varargin{2};
                 option = varargin{3};
                 relaxFactor = varargin{4}; % for relaxed approx-star method
+                depthReduct = 0;
                 dis_opt = [];
                 lp_solver = 'glpk';
             case 3
@@ -1663,6 +1751,7 @@ methods(Static) % main reach method
                 method = varargin{2};
                 option = varargin{3};
                 relaxFactor = 0; % for relaxed approx-star method
+                depthReduct = 0;
                 dis_opt = [];
                 lp_solver = 'glpk';
             case 2
@@ -1670,6 +1759,7 @@ methods(Static) % main reach method
                 method = varargin{2};
                 option = [];
                 relaxFactor = 0; % for relaxed approx-star method
+                depthReduct = 0;
                 dis_opt = [];
                 lp_solver = 'glpk';
             case 1
@@ -1677,10 +1767,11 @@ methods(Static) % main reach method
                 method = 'approx-star';
                 option = [];
                 relaxFactor = 0; % for relaxed approx-star method
+                depthReduct = 0;
                 dis_opt = [];
                 lp_solver = 'glpk';
             otherwise
-                error('Invalid number of input arguments (should be 1, 2, 3, 4 or 5)');
+                error('Invalid number of input arguments (should be between 1 and 7');
         end
 
         
@@ -1691,7 +1782,7 @@ methods(Static) % main reach method
 
         elseif strcmp(method, 'approx-sparse-star')
             
-            R = TanSig.reach_sparse_star_approx(I, method, relaxFactor, dis_opt, lp_solver);
+            R = TanSig.reach_sparse_star_approx(I, method, relaxFactor, depthReduct, dis_opt, lp_solver);
 
         elseif strcmp(method, 'approx-zono')  % over-approximate analysis using zonotope
 

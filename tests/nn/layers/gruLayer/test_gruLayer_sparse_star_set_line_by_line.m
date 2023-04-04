@@ -93,6 +93,7 @@ for i = 1:num_sample
     SampleY{i} = L.evaluate(SampleInput{i});
 end
 
+%{
 figure('Name', 'Input')
 for i = 1:n
     nexttile;
@@ -104,19 +105,19 @@ for i = 1:n
     end
     title(s);
 end
-
+%}
 
 reachMethod = 'approx-sparse-star';
 option = [];
 relaxFactor = 0;
 dis_opt = [];
-lp_solver = 'glpk';
+lp_solver = 'linprog';
 % compute reach sets
 % Y = L.reach(X, reachMethod, option, relaxFactor, dis_opt, lp_solver);
 
 method = reachMethod;
 
-%{%
+%{
 I = X;
 n = length(I); % number of sequence
 O = cell(1, n); % output reachable set sequence
@@ -149,7 +150,7 @@ else
             WR = [WR I(i).affineMap(Wr, br + gr)];
             WC = [WC I(i).affineMap(Wc, bc)];
         else
-            error('RStar is only supported for GRULayer reachability analysis');
+            error('SparseStar and Star are only supported for GRULayer reachability analysis');
         end
     end
 
@@ -188,8 +189,8 @@ else
     %%%%% SAMPELS
 
     H1 = cell(1, n); % hidden state using IdentityXIdentity
-    H2 = cell(1, n); % hidden state using LogsigXTansig
-    H3 = cell(1, n); % hidden state using LogsigXIdentity
+%     H2 = cell(1, n); % hidden state using LogsigXTansig
+%     H3 = cell(1, n); % hidden state using LogsigXIdentity
     for t = 1:n
         if t == 1
             %%%%%%%%%%%%%% Option 1: IdentityXIdentity only %%%%%%%%%%%%%%
@@ -409,14 +410,14 @@ else
 %             WUc = WC(t).Sum(RtUC);
 %             Ct = TanSig.reach(WUc, method, [], rF, dis, lps);
 
-            WUrUc = LogsigXIdentity.reach(WUr, UC, method, rF, dis, lps);
-            WUc = WC(t).Sum(WUrUc);
-            Ct2 = TanSig.reach(WUc, method, [], rF, dis, lps);
-            
-            ZHt_1 = LogsigXIdentity.reach(WUz, Ht_1, method, rF, dis, lps);
-            ZCt2 = LogsigXTansig.reach(WUz, WUc, method, rF, dis, lps);
-            Ct2nZCt2 = Ct2.Sum(negative(ZCt2));
-            H2{t} = ZHt_1.Sum(Ct2nZCt2);
+%             WUrUc = LogsigXIdentity.reach(WUr, UC, method, rF, dis, lps);
+%             WUc = WC(t).Sum(WUrUc);
+%             Ct2 = TanSig.reach(WUc, method, [], rF, dis, lps);
+%             
+%             ZHt_1 = LogsigXIdentity.reach(WUz, Ht_1, method, rF, dis, lps);
+%             ZCt2 = LogsigXTansig.reach(WUz, WUc, method, rF, dis, lps);
+%             Ct2nZCt2 = Ct2.Sum(negative(ZCt2));
+%             H2{t} = ZHt_1.Sum(Ct2nZCt2);
 
 
             %%%%%%%%%%%%%% Option 3: LogsigXIdentity only %%%%%%%%%%%%%%
@@ -435,9 +436,9 @@ else
             %      => LogsigXIdentity(WUz, H{t-1}) + c[t] - LogsigXIdentity(WUz, WUc)
             %      = ZHt_1 + Ct - ZCt
             %      = ZHt_1Ct + nZCt
-            ZCt3 = LogsigXIdentity.reach(WUz, Ct2, method, rF, dis, lps);
-            Ct2nZCt3 = Ct2.Sum(negative(ZCt3));
-            H3{t} = ZHt_1.Sum(Ct2nZCt3);
+%             ZCt3 = LogsigXIdentity.reach(WUz, Ct2, method, rF, dis, lps);
+%             Ct2nZCt3 = Ct2.Sum(negative(ZCt3));
+%             H3{t} = ZHt_1.Sum(Ct2nZCt3);
             
             %%%%%%%%%%%%%%%%%%%% Samples %%%%%%%%%%%%%%
             for i = 1:num_sample
@@ -519,15 +520,15 @@ else
             stitle = sprintf('Ct1, t = %d', t);
             title(stitle);
 
-            nexttile;
-            hold on;
-            plot(Ct2.getBox);
-            for i = 1:num_sample
-                hold on;
-                plot(c{i}(1, t), c{i}(2, t), '*k');
-            end
-            stitle = sprintf('Ct2, t = %d', t);
-            title(stitle);
+%             nexttile;
+%             hold on;
+%             plot(Ct2.getBox);
+%             for i = 1:num_sample
+%                 hold on;
+%                 plot(c{i}(1, t), c{i}(2, t), '*k');
+%             end
+%             stitle = sprintf('Ct2, t = %d', t);
+%             title(stitle);
 
             nexttile;
             hold on;
@@ -540,35 +541,35 @@ else
             title(stitle);
             
 
-            nexttile;
-            hold on;
-            plot(ZHt_1.getBox);
-            for i = 1:num_sample
-                hold on;
-                plot(zht{i}(1, t), zht{i}(2, t), '*k');
-            end
-            stitle = sprintf('ZHt\_1, t = %d', t);
-            title(stitle);
+%             nexttile;
+%             hold on;
+%             plot(ZHt_1.getBox);
+%             for i = 1:num_sample
+%                 hold on;
+%                 plot(zht{i}(1, t), zht{i}(2, t), '*k');
+%             end
+%             stitle = sprintf('ZHt\_1, t = %d', t);
+%             title(stitle);
 
-            nexttile;
-            hold on;
-            plot(ZCt2.getBox);
-            for i = 1:num_sample
-                hold on;
-                plot(zct{i}(1, t), zct{i}(2, t), '*k');
-            end
-            stitle = sprintf('ZCt2, t = %d', t);
-            title(stitle);
-
-            nexttile;
-            hold on;
-            plot(ZCt3.getBox);
-            for i = 1:num_sample
-                hold on;
-                plot(zct{i}(1, t), zct{i}(2, t), '*k');
-            end
-            stitle = sprintf('ZCt3, t = %d', t);
-            title(stitle);
+%             nexttile;
+%             hold on;
+%             plot(ZCt2.getBox);
+%             for i = 1:num_sample
+%                 hold on;
+%                 plot(zct{i}(1, t), zct{i}(2, t), '*k');
+%             end
+%             stitle = sprintf('ZCt2, t = %d', t);
+%             title(stitle);
+% 
+%             nexttile;
+%             hold on;
+%             plot(ZCt3.getBox);
+%             for i = 1:num_sample
+%                 hold on;
+%                 plot(zct{i}(1, t), zct{i}(2, t), '*k');
+%             end
+%             stitle = sprintf('ZCt3, t = %d', t);
+%             title(stitle);
 
 
             nexttile;
@@ -581,26 +582,26 @@ else
             stitle = sprintf('ZtCt, t = %d', t);
             title(stitle);
 
-            nexttile;
-            hold on;
-            plot(Ct2nZCt2.getBox);
-            for i = 1:num_sample
-                hold on;
-                plot(ztct{i}(1, t), ztct{i}(2, t), '*k');
-            end
-            stitle = sprintf('Ct2nZCt2, t = %d', t);
-            title(stitle);
-
-
-            nexttile;
-            hold on;
-            plot(Ct2nZCt3.getBox);
-            for i = 1:num_sample
-                hold on;
-                plot(ztct{i}(1, t), ztct{i}(2, t), '*k');
-            end
-            stitle = sprintf('Ct2nZCt3, t = %d', t);
-            title(stitle);
+%             nexttile;
+%             hold on;
+%             plot(Ct2nZCt2.getBox);
+%             for i = 1:num_sample
+%                 hold on;
+%                 plot(ztct{i}(1, t), ztct{i}(2, t), '*k');
+%             end
+%             stitle = sprintf('Ct2nZCt2, t = %d', t);
+%             title(stitle);
+% 
+% 
+%             nexttile;
+%             hold on;
+%             plot(Ct2nZCt3.getBox);
+%             for i = 1:num_sample
+%                 hold on;
+%                 plot(ztct{i}(1, t), ztct{i}(2, t), '*k');
+%             end
+%             stitle = sprintf('Ct2nZCt3, t = %d', t);
+%             title(stitle);
 
 
 
@@ -614,25 +615,25 @@ else
             stitle = sprintf('H1\{t\}, t = %d', t);
             title(stitle);
 
-            nexttile;
-            hold on;
-            plot(H2{t}.getBox);
-            for i = 1:num_sample
-                hold on;
-                plot(h{i}(1, t), h{i}(2, t), '*k');
-            end
-            stitle = sprintf('H2\{t\}, t = %d', t);
-            title(stitle);
-
-            nexttile;
-            hold on;
-            plot(H3{t}.getBox);
-            for i = 1:num_sample
-                hold on;
-                plot(h{i}(1, t), h{i}(2, t), '*k');
-            end
-            stitle = sprintf('H3\{t\}, t = %d', t);
-            title(stitle);
+%             nexttile;
+%             hold on;
+%             plot(H2{t}.getBox);
+%             for i = 1:num_sample
+%                 hold on;
+%                 plot(h{i}(1, t), h{i}(2, t), '*k');
+%             end
+%             stitle = sprintf('H2\{t\}, t = %d', t);
+%             title(stitle);
+% 
+%             nexttile;
+%             hold on;
+%             plot(H3{t}.getBox);
+%             for i = 1:num_sample
+%                 hold on;
+%                 plot(h{i}(1, t), h{i}(2, t), '*k');
+%             end
+%             stitle = sprintf('H3\{t\}, t = %d', t);
+%             title(stitle);
 
 %             disp(' ');
         end
@@ -689,17 +690,20 @@ end
 % lp_solver = 'glpk';
 disp('Output, Option 1');
 O1 = L.reach1_pytorch(X, reachMethod, option, relaxFactor, dis_opt, lp_solver);
-disp('Output, Option 2');
-O2 = L.reach2_pytorch(X, reachMethod, option, relaxFactor, dis_opt, lp_solver);
-disp('Output, Option 3');
-O3 = L.reach3_pytorch(X, reachMethod, option, relaxFactor, dis_opt, lp_solver);
+% disp('Output, Option 2');
+% O2 = L.reach2_pytorch(X, reachMethod, option, relaxFactor, dis_opt, lp_solver);
+% disp('Output, Option 3');
+% O3 = L.reach3_pytorch(X, reachMethod, option, relaxFactor, dis_opt, lp_solver);
 
+% O1 = O;
+%{%
 disp('Plotting Output, Option 1')
 figure('Name', 'Output, Option 1')
 for t = 1:n
     nexttile;
     hold on;
     plot(O1{t}.getBox);
+%     plot(O1{t}.getRanges('glpk'));
     
     for i = 1:num_sample
         hold on;
@@ -709,37 +713,50 @@ for t = 1:n
     s = sprintf('Set %d', t);
     title(s);
 end
+%}
 
-disp('Plotting Output, Option 2')
-figure('Name', 'Output, Option 2')
+% disp('Plotting Output, Option 2')
+% figure('Name', 'Output, Option 2')
+% for t = 1:n
+%     nexttile;
+%     hold on;
+%     plot(O2{t}.getBox);
+%     
+%     for i = 1:num_sample
+%         hold on;
+%         plot(SampleY{i}(1, t), SampleY{i}(2, t), '*k');
+%     end
+% 
+%     s = sprintf('Set %d', t);
+%     title(s);
+% end
+% 
+% disp('Plotting Output, Option 3')
+% figure('Name', 'Output, Option 3')
+% for t = 1:n
+%     nexttile;
+%     hold on;
+%     plot(O3{t}.getBox);
+%     
+%     for i = 1:num_sample
+%         hold on;
+%         plot(SampleY{i}(1, t), SampleY{i}(2, t), '*k');
+%     end
+% 
+%     s = sprintf('Set %d', t);
+%     title(s);
+% end
+
+fprintf('%s\n', class(O1{1}));
+fprintf('%s\n', lp_solver);
 for t = 1:n
-    nexttile;
-    hold on;
-    plot(O2{t}.getBox);
-    
-    for i = 1:num_sample
-        hold on;
-        plot(SampleY{i}(1, t), SampleY{i}(2, t), '*k');
-    end
-
-    s = sprintf('Set %d', t);
-    title(s);
+    fprintf('sequence: %d\n', t);
+    T = table;
+%     [T.lb, T.ub] = O1{t}.getRanges(lp_solver);
+    T.lb = O1{t}.getMins(1:O1{t}.dim, 'single',[], lp_solver);
+    T.ub = O1{t}.getMaxs(1:O1{t}.dim, 'single',[], lp_solver);
+    T
 end
 
-disp('Plotting Output, Option 3')
-figure('Name', 'Output, Option 3')
-for t = 1:n
-    nexttile;
-    hold on;
-    plot(O3{t}.getBox);
-    
-    for i = 1:num_sample
-        hold on;
-        plot(SampleY{i}(1, t), SampleY{i}(2, t), '*k');
-    end
-
-    s = sprintf('Set %d', t);
-    title(s);
-end
 
 

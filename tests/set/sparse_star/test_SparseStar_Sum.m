@@ -1,4 +1,4 @@
-% close all; clear; clc;
+close all; clear; clc;
 format long;
 
 option = [];
@@ -72,31 +72,39 @@ tMS = table;
 tMSS = table;
 [tMSS.lb, tMSS.ub] = MSS.estimateRanges()
 
-% figure('Name', 'test TanSig of SparseStar');
-% nexttile;
-% plot(S, 'r');
-% plot(SS, 'c');
-% title('input');
-% 
-% 
-% nexttile;
-% plot(Sa, 'r');
-% plot(SSa, 'c');
-% title('after affineMap 1');
-% 
-% 
-% nexttile;
-% plot(S1, 'r');
-% plot(SS1, 'c');
-% title('after TanSig');
-% 
-% nexttile;
-% plot(S2, 'r');
-% plot(SS2, 'c');
-% title('after affineMap 2');
-% 
-% 
+figure('Name', 'test TanSig of SparseStar');
 nexttile;
+hold on;
+plot(S, 'r');
+plot(SS, 'c');
+title('input');
+
+nexttile;
+hold on;
+plot(S1, 'r');
+plot(SS1, 'c');
+title('after affineMap 1');
+
+nexttile;
+hold on;
+plot(TS1, 'r');
+plot(TSS1, 'c');
+title('after TanSig 1');
+
+nexttile;
+hold on;
+plot(S2, 'r');
+plot(SS2, 'c');
+title('after affineMap 2');
+
+nexttile;
+hold on;
+plot(TS2, 'r');
+plot(TSS2, 'c');
+title('after TanSig 2');
+
+nexttile;
+hold on;
 plot(MS, 'r');
 plot(MSS, 'c');
 title('after MinkowskiSum');

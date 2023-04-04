@@ -834,9 +834,18 @@ classdef IdentityXIdentity
                 d2 = -(Ux*X.V(index, 1) + Uy*H.V(index, 1)) + Ub;
 
                 nI = I.nVar + 1;
-                m = size(I.C, 1);
-                C0 = [I.C zeros(m, 1)];
-                d0 = I.d;
+                
+                % remove a zeros row array in I.C
+                n = size(I.C, 1);
+                if n == 1 && nnz(I.C) == 0
+                    C0 = [];
+                    d0 = [];
+                else
+                    C0 = [I.C zeros(n, 1)];
+%                     C0 = [I.C zeros(n, m)];
+                    d0 = I.d;
+                end
+
                 new_C = [C0; C1; C2];
                 new_d = [d0; d1; d2];
 
@@ -858,47 +867,60 @@ classdef IdentityXIdentity
             % date: 03/08/2023
 
             switch nargin
+                case 7
+                    X = varargin{1};
+                    H = varargin{2};
+                    method = varargin{3};
+                    relaxFactor = varargin{4};
+                    depthReduct = varargin{5};
+                    dis_opt = varargin{6}; % display option
+                    lp_solver = varargin{7};
                 case 6
                     X = varargin{1};
                     H = varargin{2};
                     method = varargin{3};
                     relaxFactor = varargin{4};
-                    dis_opt = varargin{5}; % display option
-                    lp_solver = varargin{6};
+                    depthReduct = varargin{5};
+                    dis_opt = varargin{6}; % display option
+                    lp_solver = 'glpk';
                 case 5
                     X = varargin{1};
                     H = varargin{2};
                     method = varargin{3};
                     relaxFactor = varargin{4};
-                    dis_opt = varargin{5}; % display option
+                    depthReduct = varargin{5};
+                    dis_opt = []; % display option
                     lp_solver = 'glpk';
                 case 4
                     X = varargin{1};
                     H = varargin{2};
                     method = varargin{3};
                     relaxFactor = varargin{4};
-                    dis_opt = [];
+                    depthReduct = 0;
+                    dis_opt = []; % display option
                     lp_solver = 'glpk';
                 case 3
                     X = varargin{1};
                     H = varargin{2};
                     method = varargin{3};
-                    relaxFactor = 0; % for relaxed approx-star method
-                    dis_opt = [];
+                    relaxFactor = 0;
+                    depthReduct = 0;
+                    dis_opt = []; % display option
                     lp_solver = 'glpk';
                 case 2
                     X = varargin{1};
                     H = varargin{2};
                     method = 'approx-star';
-                    relaxFactor = 0; % for relaxed approx-star method
+                    relaxFactor = 0;
+                    depthReduct = 0;
                     dis_opt = [];
                     lp_solver = 'glpk';
                 otherwise
-                    error('Invalid number of input arguments, should be 2, 3, 4, 5, or 6');
+                    error('Invalid number of input arguments, should be between 2 and 7');
             end
 
             if ~(isa(X, 'SparseStar') && isa(H, 'SparseStar'))
-                error('Input sets are not star set');
+                error('Input sets are not SparseStar set');
             end
 
             if X.dim ~= H.dim
@@ -909,37 +931,115 @@ classdef IdentityXIdentity
                 error('Unknown reachability method');
             end
 
-            if relaxFactor == 0
-                n = X.dim;
-                S = X.Sum(H);
-%                 for i = 1:n
-%                     S = IdentityXIdentity.sparse_stepIdentityXIdentity(S, X, H, i, dis_opt, lp_solver);
-%                 end
-                S = IdentityXIdentity.sparse_multiStepIdentityXIdentity(S, X, H, dis_opt, lp_solver);
-            else
-                n = X.dim;
-                S = X.Sum(H);
-                for i = 1:n
-                    S = IdentityXIdentity.sparse_relaxedStepIdentityXIdentity(S, X, H, i, relaxFactor, dis_opt, lp_solver);
-                end
-            end
+            n = X.dim;
+            S = X.Sum(H);
+%             for i = 1:n
+%                 S = IdentityXIdentity.sparse_stepIdentityXIdentity(S, X, H, i, dis_opt, lp_solver);
+%             end
+            S = IdentityXIdentity.sparse_multiStepIdentityXIdentity(S, X, H, relaxFactor, depthReduct, dis_opt, lp_solver);
         end
 
         
 
-        function S = sparse_multiStepIdentityXIdentity(I, X, H, dis_opt, lp_solver)
+        function S = sparse_multiStepIdentityXIdentity(varargin)
             % @X: input star set (input state)
             % @H: input star set (hidden state)
             % @i: index of the neuron
+
+            switch nargin
+                case 7
+                    I = varargin{1};
+                    X = varargin{2};
+                    H = varargin{3};
+                    relaxFactor = varargin{4};
+                    depthReduct = varargin{5};
+                    dis_opt = varargin{6};
+                    lp_solver = varargin{7};
+                case 6
+                    I = varargin{1};
+                    X = varargin{2};
+                    H = varargin{3};
+                    relaxFactor = varargin{4};
+                    depthReduct = varargin{5};
+                    dis_opt = varargin{6};
+                    lp_solver = 'glpk';
+                case 5
+                    I = varargin{1};
+                    X = varargin{2};
+                    H = varargin{3};
+                    relaxFactor = varargin{4};
+                    depthReduct = varargin{5};
+                    dis_opt = [];
+                    lp_solver = 'glpk';
+                case 4
+                    I = varargin{1};
+                    X = varargin{2};
+                    H = varargin{3};
+                    relaxFactor = varargin{4};
+                    depthReduct = 0;
+                    dis_opt = [];
+                    lp_solver = 'glpk';
+                case 3
+                    I = varargin{1};
+                    X = varargin{2};
+                    H = varargin{3};
+                    relaxFactor = 0;
+                    depthReduct = 0;
+                    dis_opt = [];
+                    lp_solver = 'glpk';
+                otherwise
+                    error('Invalid number of input arguments, should be between 3 and 7');
+            end
+
+            if ~isa(X, 'SparseStar') && ~isa(H, 'SparseStar')
+                error('Input sets are not SparseStar sets');
+            end
+            if (relaxFactor < 0) || (relaxFactor > 1)
+                error('Invalid relax factor');
+            end
             
             N = I.dim;
             inds = 1:N;
-            if strcmp(lp_solver, 'estimate')
+
+            if relaxFactor > 0
+                [xl, xu] = X.estimateRanges;
+                [hl, hu] = H.estimateRanges;
+
+                n1x = round((1-relaxFactor)*length(xl));
+                [~, midx] = sort(xu - xl, 'descend');
+
+                n1h = round((1-relaxFactor)*length(hl));
+                [~, midh] = sort(hu - hl, 'descend');
+                
+                if strcmp(dis_opt, 'display')
+                    fprintf('\nComputing (1-%.3f) x %d = %d lower-bounds of X set, i.e. relaxing %2.2f%%: ' , relaxFactor, length(xl), n1x, 100*relaxFactor);
+                end
+                l2x = X.getMins(midx(1:n1x), [], dis_opt, lp_solver);
+                if strcmp(dis_opt, 'display')
+                    fprintf('\nComputing (1-%.3f) x %d = %d upper-bounds of X set, i.e. relaxing %2.2f%%: ' , relaxFactor, length(xl), n1x, 100*relaxFactor);
+                end
+                u2x = X.getMaxs(midx(1:n1x), [], dis_opt, lp_solver);
+                xl(midx(1:n1x)) = l2x;
+                xu(midx(1:n1x)) = u2x;
+
+                if strcmp(dis_opt, 'display')
+                    fprintf('\nComputing (1-%.3f) x %d = %d lower-bounds of H set, i.e. relaxing %2.2f%%: ' , relaxFactor, length(hl), n1h, 100*relaxFactor);
+                end
+                l2h = H.getMins(midh(1:n1h), [], dis_opt, lp_solver);
+                if strcmp(dis_opt, 'display')
+                    fprintf('\nComputing (1-%.3f) x %d = %d upper-bounds of H set, i.e. relaxing %2.2f%%: ' , relaxFactor, length(hl), n1h, 100*relaxFactor);
+                end
+                u2h = H.getMaxs(midh(1:n1h), [], dis_opt, lp_solver);
+                hl(midx(1:n1)) = l2h;
+                hu(midx(1:n1)) = u2h;
+
+            elseif strcmp(lp_solver, 'estimate')
                 if strcmp(dis_opt, 'display')
                     fprintf('\nComputing estimate lower- and upper-bounds: ');
                 end
                 [xl, xu] = X.estimateRanges;
                 [hl, hu] = H.estimateRanges;
+
             elseif strcmp(lp_solver, 'glpk') || strcmp(lp_solver, 'linprog')
                 if strcmp(dis_opt, 'display')
                     fprintf('\nComputing lower-bounds: ');
@@ -1030,9 +1130,13 @@ classdef IdentityXIdentity
 
             new_pred_lb = [I.pred_lb; Zl];
             new_pred_ub = [I.pred_ub; Zu];
+            pd1 = I.pred_depth + 1;
+            new_pred_depth = [pd1; zeros(m, 1)];
 
-            S = SparseStar(new_A, new_C, new_d, new_pred_lb, new_pred_ub);
-
+            S = SparseStar(new_A, new_C, new_d, new_pred_lb, new_pred_ub, new_pred_depth);
+            if depthReduct > 0
+                S = S.depthReduction(depthReduct);
+            end
         end
         %%%%%%%%%%%%%%%%%%%%%%%%%% SparseStar END %%%%%%%%%%%%%%%%%%%%%%%%%
 
@@ -1046,25 +1150,36 @@ classdef IdentityXIdentity
             % date: 10/11/2022
 
             switch nargin
+                case 7
+                    X = varargin{1};
+                    H = varargin{2};
+                    method = varargin{3};
+                    relaxFactor = varargin{4};
+                    depthReduct = varargin{5};
+                    dis_opt = varargin{6}; % display option
+                    lp_solver = varargin{7};
                 case 6
                     X = varargin{1};
                     H = varargin{2};
                     method = varargin{3};
                     relaxFactor = varargin{4};
-                    dis_opt = varargin{5}; % display option
-                    lp_solver = varargin{6};
+                    depthReduct = varargin{5};
+                    dis_opt = varargin{6}; % display option
+                    lp_solver = 'glpk';
                 case 5
                     X = varargin{1};
                     H = varargin{2};
                     method = varargin{3};
                     relaxFactor = varargin{4};
-                    dis_opt = varargin{5}; % display option
+                    depthReduct = varargin{5};
+                    dis_opt = []; % display option
                     lp_solver = 'glpk';
                 case 4
                     X = varargin{1};
                     H = varargin{2};
                     method = varargin{3};
                     relaxFactor = varargin{4};
+                    depthReduct = 0;
                     dis_opt = [];
                     lp_solver = 'glpk';
                 case 3
@@ -1072,6 +1187,7 @@ classdef IdentityXIdentity
                     H = varargin{2};
                     method = varargin{3};
                     relaxFactor = 0; % for relaxed approx-star method
+                    depthReduct = 0;
                     dis_opt = [];
                     lp_solver = 'glpk';
                 case 2
@@ -1079,6 +1195,7 @@ classdef IdentityXIdentity
                     H = varargin{2};
                     method = 'approx-star';
                     relaxFactor = 0; % for relaxed approx-star method
+                    depthReduct = 0;
                     dis_opt = [];
                     lp_solver = 'glpk';
                 otherwise
@@ -1091,7 +1208,7 @@ classdef IdentityXIdentity
             
             elseif strcmp(method, 'approx-sparse-star')
 
-                R = IdentityXIdentity.reach_sparse_star_approx(X, H, method, relaxFactor, dis_opt, lp_solver);
+                R = IdentityXIdentity.reach_sparse_star_approx(X, H, method, relaxFactor, depthReduct, dis_opt, lp_solver);
 
             else
                 error('Unknown or unsupported reachability method for layer with LogSig activation function');
