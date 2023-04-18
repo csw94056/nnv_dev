@@ -474,7 +474,7 @@ classdef IdentityXIdentity
                     px_inter_y = ( px(z_) - po(z_) ) / (hu - hl);
                     l_min_slope(y_) = min(abs([l_min_slope(y_), px_inter_y, px(dzy_)]));
                 else
-                    py = IdentityXIdentity.get_pointY(pzs, u_);
+                    py = IdentityXIdentity.get_pointY(pzs, l_);
                     po = pzs(sl_min2max_i, x_:z_);
                     new_z = pzs(z_min, z_) + l_min_slope(x_)*(xu-xl) + l_min_slope(y_)*(hu-hl);
                     
