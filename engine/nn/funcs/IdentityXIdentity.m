@@ -184,7 +184,7 @@ classdef IdentityXIdentity
             end
             
             tan_i_ = 1;
-            int_min2max_i_ = sl_min2max_i;
+            int_min2max_i_ = sl_min2max_i + tan_i_;
             %% finding minimal slopes among tangent lines and intersection lines.
             l_slope = cell(1,2);
             l_min_slope = nan(1, 2);
@@ -208,7 +208,7 @@ classdef IdentityXIdentity
                     px_inter_y = ( px(z_) - po(z_) ) / (hu - hl);
                     l_min_slope(y_) = min(abs([l_min_slope(y_), px_inter_y, px(dzy_)]));
                 else
-                    py = IdentityXIdentity.get_pointY(pzs, u_);
+                    py = IdentityXIdentity.get_pointY(pzs, l_);
                     po = pzs(sl_min2max_i, x_:z_);
                     new_z = pzs(z_min, z_) + l_min_slope(x_)*(xu-xl) + l_min_slope(y_)*(hu-hl);
                     

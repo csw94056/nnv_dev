@@ -1363,6 +1363,45 @@ classdef Star
             end
 
         end
+
+        % get lower bound and upper bound vector of the state variables
+        function [lb, ub] = getRanges2(varargin)
+            % author: Sung Woo Choi
+            % date: 03/07/2023
+
+            switch nargin
+                case 3
+                    obj = varargin{1};
+                    lps = varargin{2};
+                    par_option = varargin{3};
+                case 2
+                    obj = varargin{1};
+                    lps = varargin{2};
+                    par_option = 'single';
+                case 1
+                    obj = varargin{1};
+                    lps = 'linprog';
+                    par_option = 'single';
+                otherwise
+                    error('Invalid number of inputs, should be 1, 2, or 3');
+            end
+
+            if obj.isEmptySet      
+                lb = [];
+                ub = [];
+                return;
+            end
+
+            if strcmp(lps, 'estimate')
+                [lb, ub] = obj.estimateBounds;
+            elseif strcmp(lps, 'linprog') || strcmp(lps, 'glpk')
+                lb = obj.getMins(1:obj.dim, [], [], lps);
+                ub = obj.getMaxs(1:obj.dim, [], [], lps);
+            else
+                error('Unknown LP solver method');
+            end
+
+        end
         
         % find range of a state at specific position
         function [xmin, xmax] = estimateRange(obj, index)

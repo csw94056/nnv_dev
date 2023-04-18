@@ -108,7 +108,7 @@ classdef SparseStar
                     obj.d = d;
                     obj.dim = nA;
                     obj.nVar = mC;
-                                                            
+
                 case 2
                     % construct star from lower bound and upper bound
                     % vector
@@ -127,29 +127,71 @@ classdef SparseStar
                     end
 
                     dim = n1;
-                    center = 0.5 * (lb + ub);
-                    vec = 0.5 * (ub - lb);
-    
-                    if norm(vec) == 0
-                        vec = zeros(dim, 1);
-                    end
-                    
+%                     center = 0.5 * (lb + ub);
+%                     vec = 0.5 * (ub - lb);
+%     
+%                     if norm(vec) == 0
+%                         vec = zeros(dim, 1);
+%                     end
                     %2*n/n*(n+1) > 0.69299
                     if 2 > 0.69299*(n1+1)
-                        obj.A = [sparse(center), spdiags(vec, 0, dim, dim)];
+                        obj.A = [sparse(dim,1), eye(dim)];
                     else
-                        obj.A = [center, diag(vec)];
+                        obj.A = [zeros(dim,1), eye(dim)];
                     end
                     obj.C = zeros(1, dim); % initiate an obvious constraint
                     obj.d = 0;
                     obj.dim = dim;
                     obj.nVar = dim;
-                    obj.state_lb = -ones(dim, 1);
-                    obj.state_ub = ones(dim, 1);
+                    obj.state_lb = lb;
+                    obj.state_ub = ub;
                     obj.pred_lb = obj.state_lb;
                     obj.pred_ub = obj.state_ub;
                     
                     obj.pred_depth = zeros(dim, 1);
+                 
+                                                            
+%                 case 2
+%                     % construct star from lower bound and upper bound
+%                     % vector
+%                     lb = varargin{1};
+%                     ub = varargin{2};
+% 
+%                     [n1, m1] = size(lb);
+%                     [n2, m2] = size(ub);
+%                     
+%                     if m1 ~= 1 || m2 ~= 1
+%                         error('lb and ub should be a vector');
+%                     end
+%                     
+%                     if n1 ~= n2
+%                         error('Inconsistent dimensions between lb and ub');
+%                     end
+% 
+%                     dim = n1;
+%                     center = 0.5 * (lb + ub);
+%                     vec = 0.5 * (ub - lb);
+%     
+%                     if norm(vec) == 0
+%                         vec = zeros(dim, 1);
+%                     end
+%                     
+%                     %2*n/n*(n+1) > 0.69299
+%                     if 2 > 0.69299*(n1+1)
+%                         obj.A = [sparse(center), spdiags(vec, 0, dim, dim)];
+%                     else
+%                         obj.A = [center, diag(vec)];
+%                     end
+%                     obj.C = zeros(1, dim); % initiate an obvious constraint
+%                     obj.d = 0;
+%                     obj.dim = dim;
+%                     obj.nVar = dim;
+%                     obj.state_lb = -ones(dim, 1);
+%                     obj.state_ub = ones(dim, 1);
+%                     obj.pred_lb = obj.state_lb;
+%                     obj.pred_ub = obj.state_ub;
+%                     
+%                     obj.pred_depth = zeros(dim, 1);
                  
                 case 1 % accept a polyhedron as an input and transform to a star
                     I = varargin{1};
