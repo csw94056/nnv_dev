@@ -418,7 +418,7 @@ classdef IdentityXIdentity
                         y_slope = -(z_range + u_min_slope(x_)*(xu-xl))/(hu-hl);
                         u_min_slope(y_) = min(abs([u_min_slope(y_), y_slope, px(dzy_)]));
                     else
-                        u_min_slope(y_) = min(abs([u_min_slope(y_), px(y_)]));
+                        u_min_slope(y_) = min(abs([u_min_slope(y_), px(dzy_)]));
                     end
                 end
             
@@ -479,12 +479,12 @@ classdef IdentityXIdentity
                     new_z = pzs(z_min, z_) + l_min_slope(x_)*(xu-xl) + l_min_slope(y_)*(hu-hl);
                     
                     % po(z_) = pzs(z_min, z_) + l_min_slope(x_)*(xu-xl) + l_min_slope(y_)*(hu-hl)
-                    if new_z < po(z_)
+                    if new_z > po(z_)
                         z_range = po(z_) - pzs(z_min, z_);
                         x_slope = -(z_range + l_min_slope(y_)*(hu-hl))/(xu-xl);
                         l_min_slope(x_) = min(abs([l_min_slope(x_), x_slope, py(dzx_)]));
                     else
-                        l_min_slope(x_) = min(abs([l_min_slope(x_), py(x_)]));
+                        l_min_slope(x_) = min(abs([l_min_slope(x_), py(dzx_)]));
                     end
                 end
             
